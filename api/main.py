@@ -1,7 +1,11 @@
 from datetime import date
 
 import psycopg2
-from fastapi import FastAPI
+from cachetools import TTLCache
+from fastapi import FastAPI, Request
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 DB_CONFIG = {
     "host": "localhost",
@@ -11,7 +15,13 @@ DB_CONFIG = {
     "password": "indexar_dev_pass",
 }
 
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="IndexAR API")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Caché en memoria: hasta 1000 combinaciones distintas, cada una vive 5 minutos.
+cache = TTLCache(maxsize=1000, ttl=300)
 
 
 def get_conn():
@@ -86,11 +96,7 @@ def calcular_inflacion_acumulada(conn, fecha_origen, fecha_destino):
     return (1 / factor) if hacia_atras else factor
 
 
-@app.get("/convertir")
-def convertir(monto: float, fecha_origen: date, fecha_destino: date = None):
-    if fecha_destino is None:
-        fecha_destino = date.today()
-
+def calcular_conversion(monto, fecha_origen, fecha_destino):
     conn = get_conn()
     try:
         resultado = {}
@@ -116,3 +122,18 @@ def convertir(monto: float, fecha_origen: date, fecha_destino: date = None):
         }
     finally:
         conn.close()
+
+
+@app.get("/convertir")
+@limiter.limit("60/minute")
+def convertir(request: Request, monto: float, fecha_origen: date, fecha_destino: date = None):
+    if fecha_destino is None:
+        fecha_destino = date.today()
+
+    clave = (monto, fecha_origen, fecha_destino)
+    if clave in cache:
+        return cache[clave]
+
+    respuesta = calcular_conversion(monto, fecha_origen, fecha_destino)
+    cache[clave] = respuesta
+    return respuesta
