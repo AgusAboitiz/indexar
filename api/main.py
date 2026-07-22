@@ -2,7 +2,7 @@ from datetime import date
 
 import psycopg2
 from cachetools import TTLCache
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -20,7 +20,6 @@ app = FastAPI(title="IndexAR API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Caché en memoria: hasta 1000 combinaciones distintas, cada una vive 5 minutos.
 cache = TTLCache(maxsize=1000, ttl=300)
 
 
@@ -38,7 +37,6 @@ def obtener_codigo_y_tipo(conn, serie_id):
 
 
 def obtener_valor_serie(conn, codigo, tipo, fecha):
-    """Busca el último valor disponible de una serie tipo cotizacion/indice, en o antes de la fecha."""
     with conn.cursor() as cur:
         tabla = "cotizaciones" if tipo == "cotizacion" else "indices"
         columna = "venta" if tipo == "cotizacion" else "valor"
@@ -57,7 +55,6 @@ def obtener_valor_serie(conn, codigo, tipo, fecha):
 
 
 def calcular_ratio_directo(conn, serie_id, fecha_origen, fecha_destino):
-    """Para series de nivel (UVA, dólar): ratio simple entre destino y origen."""
     codigo, tipo = obtener_codigo_y_tipo(conn, serie_id)
     valor_origen = obtener_valor_serie(conn, codigo, tipo, fecha_origen)
     valor_destino = obtener_valor_serie(conn, codigo, tipo, fecha_destino)
@@ -65,10 +62,6 @@ def calcular_ratio_directo(conn, serie_id, fecha_origen, fecha_destino):
 
 
 def calcular_inflacion_acumulada(conn, fecha_origen, fecha_destino):
-    """
-    Para inflación (variación % mensual): encadena los factores mensuales.
-    Si fecha_destino < fecha_origen, calcula hacia adelante y devuelve el inverso.
-    """
     codigo, _ = obtener_codigo_y_tipo(conn, "inflacion_mensual")
 
     hacia_atras = fecha_destino < fecha_origen
@@ -137,3 +130,69 @@ def convertir(request: Request, monto: float, fecha_origen: date, fecha_destino:
     respuesta = calcular_conversion(monto, fecha_origen, fecha_destino)
     cache[clave] = respuesta
     return respuesta
+
+
+@app.get("/series")
+@limiter.limit("60/minute")
+def listar_series(request: Request):
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT serie_id, nombre, tipo, periodicidad, fuente_default FROM series ORDER BY codigo"
+            )
+            filas = cur.fetchall()
+        return [
+            {
+                "serie_id": f[0],
+                "nombre": f[1],
+                "tipo": f[2],
+                "periodicidad": f[3],
+                "fuente_default": f[4],
+            }
+            for f in filas
+        ]
+    finally:
+        conn.close()
+
+
+@app.get("/series/{serie_id}")
+@limiter.limit("60/minute")
+def obtener_serie(request: Request, serie_id: str, desde: date = None, hasta: date = None):
+    conn = get_conn()
+    try:
+        try:
+            codigo, tipo = obtener_codigo_y_tipo(conn, serie_id)
+        except ValueError:
+            raise HTTPException(status_code=404, detail=f"Serie '{serie_id}' no encontrada")
+
+        tabla = "cotizaciones" if tipo == "cotizacion" else "indices"
+        columnas = "fecha, compra, venta" if tipo == "cotizacion" else "fecha, valor"
+
+        condiciones = ["codigo = %s"]
+        params = [codigo]
+        if desde is not None:
+            condiciones.append("fecha >= %s")
+            params.append(desde)
+        if hasta is not None:
+            condiciones.append("fecha <= %s")
+            params.append(hasta)
+
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT {columnas} FROM {tabla} WHERE {' AND '.join(condiciones)} ORDER BY fecha",
+                params,
+            )
+            filas = cur.fetchall()
+
+        if tipo == "cotizacion":
+            datos = [
+                {"fecha": f[0].isoformat(), "compra": float(f[1]) if f[1] is not None else None, "venta": float(f[2])}
+                for f in filas
+            ]
+        else:
+            datos = [{"fecha": f[0].isoformat(), "valor": float(f[1])} for f in filas]
+
+        return {"serie_id": serie_id, "cantidad": len(datos), "datos": datos}
+    finally:
+        conn.close()
