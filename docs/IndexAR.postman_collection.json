@@ -1,0 +1,99 @@
+{
+  "info": {
+    "_postman_id": "6fb2a5c4-2cdf-467c-a65c-0a4278ada248",
+    "name": "IndexAR",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "56832402",
+    "_collection_link": "https://go.postman.co/collection/56832402-6fb2a5c4-2cdf-467c-a65c-0a4278ada248?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Listar series",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/series",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "series"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Obtener Serie",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/series/uva?desde=2024-01-01&hasta=2024-01-10",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "series",
+            "uva"
+          ],
+          "query": [
+            {
+              "key": "desde",
+              "value": "2024-01-01",
+              "type": "text"
+            },
+            {
+              "key": "hasta",
+              "value": "2024-01-10",
+              "type": "text"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Convertir",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/convertir?monto=100&fecha_origen=2020-01-01",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "convertir"
+          ],
+          "query": [
+            {
+              "key": "monto",
+              "value": "100",
+              "type": "text"
+            },
+            {
+              "key": "fecha_origen",
+              "value": "2020-01-01",
+              "type": "text"
+            },
+            {
+              "key": "fecha_destino",
+              "value": null,
+              "type": "text",
+              "disabled": true
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
