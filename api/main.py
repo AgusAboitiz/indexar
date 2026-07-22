@@ -119,8 +119,13 @@ def calcular_conversion(monto, fecha_origen, fecha_destino):
 
 @app.get("/convertir")
 @limiter.limit("60/minute")
-def convertir(request: Request, monto: float, fecha_origen: date, fecha_destino: date = None):
-    if fecha_destino is None:
+def convertir(request: Request, monto: float, fecha_origen: date, fecha_destino: str = None):
+    if fecha_destino:
+        try:
+            fecha_destino = date.fromisoformat(fecha_destino)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="fecha_destino invalida")
+    else:
         fecha_destino = date.today()
 
     clave = (monto, fecha_origen, fecha_destino)

@@ -121,9 +121,6 @@ Hay una colección lista para importar en [`docs/IndexAR.postman_collection.json
 
 ## Limitaciones conocidas
 
-- **Bug:** si se envía `fecha_destino` vacío como parámetro de query (por ejemplo
-  `fecha_destino=`) en vez de omitirlo, el parseo de fecha falla en lugar de
-  interpretarse como "sin valor".
 - No hay automatización de actualización periódica de los datos todavía; los scripts
   de ingesta se corren manualmente.
 - La contraseña de Postgres está hardcodeada en el código y en `docker-compose.yml`.
