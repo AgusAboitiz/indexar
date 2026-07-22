@@ -53,7 +53,7 @@ def calcular_ratio_directo(conn, serie_id, fecha_origen, fecha_destino):
     valor_destino = obtener_valor_serie(conn, codigo, tipo, fecha_destino)
     return valor_destino / valor_origen
 
-
+# TODO: no soporta fecha_destino < fecha_origen (bug conocido, arreglar) 
 def calcular_inflacion_acumulada(conn, fecha_origen, fecha_destino):
     """
     Para inflación (variación % mensual): encadena los factores mensuales
