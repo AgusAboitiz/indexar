@@ -1,57 +1,21 @@
-import requests
-import psycopg2
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 5432,
-    "dbname": "indexar",
-    "user": "indexar",
-    "password": "indexar_dev_pass",
-}
+import psycopg2
+
+from common import DB_CONFIG, obtener_codigo_serie, get_paginado
 
 SERIE_ID = "dolar_oficial"
 BCRA_URL = "https://api.bcra.gob.ar/estadisticascambiarias/v1.0/Cotizaciones/USD"
 
 
 def obtener_datos_bcra(fecha_desde, fecha_hasta):
-    todos_los_registros = []
-    offset = 0
-    limit = 1000
-
-    while True:
-        params = {
-            "fechaDesde": fecha_desde,
-            "fechaHasta": fecha_hasta,
-            "limit": limit,
-            "offset": offset,
-        }
-        response = requests.get(BCRA_URL, params=params, verify=False)
-        if response.status_code != 200:
-            print("Error del BCRA:", response.text)
-        response.raise_for_status()
-        data = response.json()
-        registros = data["results"]
-
-        todos_los_registros.extend(registros)
-        print(f"  Página con offset={offset}: {len(registros)} registros")
-
-        if len(registros) < limit:
-            break
-
-        offset += limit
-
-    return todos_los_registros
-
-
-def obtener_codigo_serie(conn, serie_id):
-    with conn.cursor() as cur:
-        cur.execute("SELECT codigo FROM series WHERE serie_id = %s", (serie_id,))
-        row = cur.fetchone()
-        if row is None:
-            raise ValueError(f"No existe la serie '{serie_id}' en la tabla series")
-        return row[0]
+    params_base = {"fechaDesde": fecha_desde, "fechaHasta": fecha_hasta}
+    return get_paginado(
+        BCRA_URL,
+        params_base,
+        extraer_items=lambda data: data["results"],
+    )
 
 
 def insertar_cotizaciones(conn, codigo, registros):
@@ -72,7 +36,7 @@ def insertar_cotizaciones(conn, codigo, registros):
 
 
 if __name__ == "__main__":
-    fecha_desde = "1992-01-02"
+    fecha_desde = "2014-01-01"
     fecha_hasta = datetime.now(ZoneInfo("America/Argentina/Buenos_Aires")).date().isoformat()
 
     print(f"Pidiendo datos del BCRA desde {fecha_desde} hasta {fecha_hasta}...")
