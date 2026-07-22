@@ -53,15 +53,17 @@ def calcular_ratio_directo(conn, serie_id, fecha_origen, fecha_destino):
     valor_destino = obtener_valor_serie(conn, codigo, tipo, fecha_destino)
     return valor_destino / valor_origen
 
-# TODO: no soporta fecha_destino < fecha_origen (bug conocido, arreglar) 
+
 def calcular_inflacion_acumulada(conn, fecha_origen, fecha_destino):
     """
-    Para inflación (variación % mensual): encadena los factores mensuales
-    entre el mes siguiente al origen y el mes destino (inclusive).
+    Para inflación (variación % mensual): encadena los factores mensuales.
+    Si fecha_destino < fecha_origen, calcula hacia adelante y devuelve el inverso.
     """
     codigo, _ = obtener_codigo_y_tipo(conn, "inflacion_mensual")
-    fecha_origen_mes = fecha_origen.replace(day=1)
-    fecha_destino_mes = fecha_destino.replace(day=1)
+
+    hacia_atras = fecha_destino < fecha_origen
+    inicio = min(fecha_origen, fecha_destino).replace(day=1)
+    fin = max(fecha_origen, fecha_destino).replace(day=1)
 
     with conn.cursor() as cur:
         cur.execute(
@@ -70,7 +72,7 @@ def calcular_inflacion_acumulada(conn, fecha_origen, fecha_destino):
             WHERE codigo = %s AND fecha > %s AND fecha <= %s
             ORDER BY fecha
             """,
-            (codigo, fecha_origen_mes, fecha_destino_mes),
+            (codigo, inicio, fin),
         )
         filas = cur.fetchall()
 
@@ -80,7 +82,8 @@ def calcular_inflacion_acumulada(conn, fecha_origen, fecha_destino):
     factor = 1.0
     for (valor,) in filas:
         factor *= (1 + float(valor) / 100)
-    return factor
+
+    return (1 / factor) if hacia_atras else factor
 
 
 @app.get("/convertir")
