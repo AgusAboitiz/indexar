@@ -3,6 +3,7 @@ from datetime import date
 import psycopg2
 from cachetools import TTLCache
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -19,6 +20,13 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="IndexAR API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
 
 cache = TTLCache(maxsize=1000, ttl=300)
 

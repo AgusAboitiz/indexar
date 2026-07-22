@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IndexAR — ¿qué convino guardar?</title>
+<style>
+  :root{
+    --bg: #0b0e12;
+    --panel: #12161c;
+    --panel-2: #171c23;
+    --border: #262c35;
+    --text: #e7e9ec;
+    --text-dim: #8a939f;
+    --text-faint: #545e6b;
+    --accent: #d97757;
+    --accent-soft: #d9775722;
+    --oficial: #6ea8ff;
+    --mep: #d97757;
+    --uva: #5fd9a4;
+    --ipc: #ffb454;
+    --mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
+    --sans: "Inter", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{min-height:100vh;}
+
+  .wrap{max-width:720px;margin:0 auto;padding:56px 24px 100px;}
+
+  header{margin-bottom:48px;}
+  .brand{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;}
+  .brand .mark{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;}
+  h1{font-size:32px;font-weight:700;letter-spacing:-0.5px;margin:0 0 10px;line-height:1.15;}
+  h1 span{color:var(--accent);}
+  .lead{color:var(--text-dim);font-size:15px;line-height:1.6;max-width:520px;}
+
+  form{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:28px;
+    margin-bottom:36px;
+  }
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field.full{grid-column:1 / -1;}
+  label{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.6px;font-weight:600;}
+  input{
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:11px 13px;
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:15px;
+    outline:none;
+    transition:border-color .15s;
+  }
+  input:focus{border-color:var(--accent);}
+  input::-webkit-calendar-picker-indicator{filter:invert(0.6);cursor:pointer;}
+
+  button{
+    width:100%;
+    margin-top:6px;
+    background:var(--accent);
+    color:#161008;
+    border:none;
+    border-radius:8px;
+    padding:13px;
+    font-family:var(--sans);
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    transition:filter .15s, transform .1s;
+  }
+  button:hover{filter:brightness(1.08);}
+  button:active{transform:scale(0.995);}
+  button:disabled{opacity:0.5;cursor:wait;}
+
+  .error{
+    display:none;
+    background:#3a1f1f;
+    border:1px solid #6b3232;
+    color:#ffb4b4;
+    border-radius:8px;
+    padding:12px 14px;
+    font-size:13px;
+    margin-bottom:24px;
+  }
+  .error.show{display:block;}
+
+  #resultados{display:none;}
+  #resultados.show{display:block;}
+
+  .resumen{
+    font-size:14px;
+    color:var(--text-dim);
+    margin-bottom:20px;
+    line-height:1.6;
+  }
+  .resumen b{color:var(--text);font-family:var(--mono);}
+
+  .barra-row{margin-bottom:18px;}
+  .barra-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .barra-nombre{font-size:13px;color:var(--text-dim);}
+  .barra-valor{font-family:var(--mono);font-size:18px;font-weight:700;}
+  .barra-track{
+    height:10px;
+    background:var(--panel-2);
+    border-radius:5px;
+    overflow:hidden;
+    border:1px solid var(--border);
+  }
+  .barra-fill{
+    height:100%;
+    border-radius:5px;
+    transition:width .5s ease;
+    width:0;
+  }
+
+  .ganador{
+    margin-top:28px;
+    padding:16px 18px;
+    background:var(--accent-soft);
+    border:1px solid var(--accent);
+    border-radius:10px;
+    font-size:14px;
+    line-height:1.6;
+  }
+  .ganador b{color:var(--accent);}
+
+  footer{
+    margin-top:56px;
+    padding-top:20px;
+    border-top:1px solid var(--border);
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--text-faint);
+    line-height:1.8;
+  }
+  footer a{color:var(--text-faint);}
+
+  @media (max-width:520px){
+    .field-row{grid-template-columns:1fr;}
+    h1{font-size:26px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <span class="mark">IndexAR</span>
+    </div>
+    <h1>¿Qué convino <span>guardar</span>?</h1>
+    <p class="lead">Convertí un monto de una fecha a otra y compará cómo lo hubiera preservado el peso ajustado por inflación, el UVA, el dólar oficial y el dólar MEP.</p>
+  </header>
+
+  <form id="form-convertir">
+    <div class="field-row">
+      <div class="field full">
+        <label for="monto">Monto (ARS)</label>
+        <input type="number" id="monto" value="100" min="0" step="any" required>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="fecha_origen">Desde</label>
+        <input type="date" id="fecha_origen" required>
+      </div>
+      <div class="field">
+        <label for="fecha_destino">Hasta</label>
+        <input type="date" id="fecha_destino">
+      </div>
+    </div>
+    <button type="submit" id="btn-convertir">Convertir</button>
+  </form>
+
+  <div class="error" id="error"></div>
+
+  <div id="resultados">
+    <div class="resumen" id="resumen"></div>
+    <div id="barras"></div>
+    <div class="ganador" id="ganador"></div>
+  </div>
+
+  <footer>
+    api: <span id="api-url">http://localhost:8000</span> · fuentes: BCRA · ArgentinaDatos
+  </footer>
+
+</div>
+
+<script>
+  const API_BASE = "http://localhost:8000";
+  document.getElementById("api-url").textContent = API_BASE;
+
+  const UNIDADES = {
+    dolar_oficial: { nombre: "Dólar oficial", color: "var(--oficial)" },
+    dolar_mep:     { nombre: "Dólar MEP",     color: "var(--mep)" },
+    uva:           { nombre: "UVA",           color: "var(--uva)" },
+    inflacion_mensual: { nombre: "Inflación (IPC)", color: "var(--ipc)" },
+  };
+
+  const form = document.getElementById("form-convertir");
+  const btn = document.getElementById("btn-convertir");
+  const errorBox = document.getElementById("error");
+  const resultados = document.getElementById("resultados");
+  const resumen = document.getElementById("resumen");
+  const barrasEl = document.getElementById("barras");
+  const ganadorEl = document.getElementById("ganador");
+
+  // Default: hoy menos 5 años, hasta hoy.
+  const hoy = new Date();
+  const hace5 = new Date(hoy);
+  hace5.setFullYear(hoy.getFullYear() - 5);
+  document.getElementById("fecha_origen").value = hace5.toISOString().slice(0, 10);
+
+  const fmtARS = (n) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorBox.classList.remove("show");
+    resultados.classList.remove("show");
+    btn.disabled = true;
+    btn.textContent = "Calculando…";
+
+    const monto = document.getElementById("monto").value;
+    const fecha_origen = document.getElementById("fecha_origen").value;
+    const fecha_destino = document.getElementById("fecha_destino").value;
+
+    const params = new URLSearchParams({ monto, fecha_origen });
+    if (fecha_destino) params.set("fecha_destino", fecha_destino);
+
+    try {
+      const resp = await fetch(`${API_BASE}/convertir?${params.toString()}`);
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => null);
+        throw new Error(body?.detail?.[0]?.msg || body?.detail || `Error ${resp.status}`);
+      }
+      const data = await resp.json();
+      render(data);
+    } catch (err) {
+      errorBox.textContent = "No se pudo calcular: " + err.message;
+      errorBox.classList.add("show");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Convertir";
+    }
+  });
+
+  function render(data) {
+    resumen.innerHTML = `${fmtARS(data.monto_original)} del <b>${data.fecha_origen}</b> equivalen hoy a, según cada unidad:`;
+
+    const valores = Object.entries(data.equivalentes)
+      .filter(([, v]) => typeof v === "number")
+      .map(([id, v]) => ({ id, valor: v }));
+
+    if (valores.length === 0) {
+      barrasEl.innerHTML = "";
+      ganadorEl.style.display = "none";
+      resultados.classList.add("show");
+      return;
+    }
+
+    const max = Math.max(...valores.map((v) => v.valor));
+
+    barrasEl.innerHTML = valores
+      .sort((a, b) => b.valor - a.valor)
+      .map(({ id, valor }) => {
+        const info = UNIDADES[id] || { nombre: id, color: "var(--text-dim)" };
+        const pct = max > 0 ? (valor / max) * 100 : 0;
+        return `
+          <div class="barra-row">
+            <div class="barra-head">
+              <span class="barra-nombre">${info.nombre}</span>
+              <span class="barra-valor" style="color:${info.color}">${fmtARS(valor)}</span>
+            </div>
+            <div class="barra-track">
+              <div class="barra-fill" style="background:${info.color}; width:${pct}%"></div>
+            </div>
+          </div>`;
+      })
+      .join("");
+
+    const ganador = valores.reduce((a, b) => (b.valor > a.valor ? b : a));
+    const info = UNIDADES[ganador.id] || { nombre: ganador.id };
+    ganadorEl.style.display = "block";
+    ganadorEl.innerHTML = `En este período, <b>${info.nombre}</b> preservó mejor el valor de tu dinero.`;
+
+    resultados.classList.add("show");
+  }
+</script>
+</body>
+</html>
